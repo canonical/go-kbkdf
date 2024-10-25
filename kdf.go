@@ -3,12 +3,14 @@
 // See LICENCE file for details.
 
 /*
-Package kdf implements the key derivation functions described in NIST SP-800-108
+Package kbkdf implements the key derivation functions described in NIST SP-800-108
 (see https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf).
 
 All 3 modes are implemented - counter, feedback and pipeline.
+
+The counter mode is used extensively in the reference TPM implementation.
 */
-package kdf
+package kbkdf
 
 import (
 	"bytes"

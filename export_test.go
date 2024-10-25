@@ -1,4 +1,4 @@
-package kdf
+package kbkdf
 
 var (
 	CounterModeKeyInternal  = counterModeKeyInternal
