@@ -6,8 +6,8 @@ package kbkdf
 
 // PRF represents a pseudorandom function.
 type PRF interface {
-	// Len returns the output length of this PRF.
-	Len() uint32
+	// Size returns the output length of this PRF.
+	Size() uint32
 
 	// Run computes bytes for the supplied seed and input value.
 	Run(s, x []byte) []byte

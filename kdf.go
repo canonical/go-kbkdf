@@ -38,7 +38,7 @@ func commonKDF(prfLen uint32, bitLength uint32, fn func(uint32) []byte) []byte {
 }
 
 func counterModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32) []byte {
-	return commonKDF(prf.Len(), bitLength, func(i uint32) []byte {
+	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
 		var x bytes.Buffer
 		binary.Write(&x, binary.BigEndian, i)
 		x.Write(fixed)
@@ -56,7 +56,7 @@ func CounterModeKey(prf PRF, key, label, context []byte, bitLength uint32) []byt
 func feedbackModeKeyInternal(prf PRF, key, fixed, iv []byte, bitLength uint32, useCounter bool) []byte {
 	k := iv
 
-	return commonKDF(prf.Len(), bitLength, func(i uint32) []byte {
+	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
 		var x bytes.Buffer
 		x.Write(k)
 		if useCounter {
@@ -82,7 +82,7 @@ func FeedbackModeKey(prf PRF, key, label, context, iv []byte, bitLength uint32, 
 func pipelineModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32, useCounter bool) []byte {
 	a := fixed
 
-	return commonKDF(prf.Len(), bitLength, func(i uint32) []byte {
+	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
 		a = prf.Run(key, a)
 
 		var x bytes.Buffer

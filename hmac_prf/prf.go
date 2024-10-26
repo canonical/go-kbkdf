@@ -14,13 +14,11 @@ package hmac_prf
 import (
 	"crypto"
 	"crypto/hmac"
-
-	"github.com/canonical/go-kbkdf"
 )
 
 type prf crypto.Hash
 
-func (p prf) Len() uint32 {
+func (p prf) Size() uint32 {
 	return uint32(crypto.Hash(p).Size())
 }
 
@@ -30,24 +28,25 @@ func (p prf) Run(s, x []byte) []byte {
 	return h.Sum(nil)
 }
 
-// New creates a new HMAC based PRF using the supplied digest algorithm.
-func New(h crypto.Hash) kbkdf.PRF {
-	return prf(h)
-}
-
 var (
 	// SHA1 is a HMAC-SHA1 PRF
-	SHA1 = New(crypto.SHA1)
+	SHA1 = prf(crypto.SHA1)
 
 	// SHA224 is a HMAC-SHA224 PRF
-	SHA224 = New(crypto.SHA224)
+	SHA224 = prf(crypto.SHA224)
 
 	// SHA256 is a HMAC-SHA256 PRF
-	SHA256 = New(crypto.SHA256)
+	SHA256 = prf(crypto.SHA256)
 
 	// SHA384 is a HMAC-SHA384 PRF
-	SHA384 = New(crypto.SHA384)
+	SHA384 = prf(crypto.SHA384)
 
 	// SHA512 is a HMAC-SHA512 PRF
-	SHA512 = New(crypto.SHA512)
+	SHA512 = prf(crypto.SHA512)
+
+	// SHA512_224 is a HMAC-SHA512/224 PRF
+	SHA512_224 = prf(crypto.SHA512_224)
+
+	// SHA512_256 is a HMAC-SHA512/256 PRF
+	SHA512_256 = prf(crypto.SHA512_256)
 )
