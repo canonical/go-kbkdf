@@ -1,3 +1,5 @@
+[![Tests](https://github.com/canonical/go-kbkdf/workflows/Tests/badge.svg)](https://github.com/canonical/go-kbkdf/actions?query=workflow%3ATests) [![GoDoc](https://godoc.org/github.com/canonical/go-kbkdf?status.svg)](https://godoc.org/github.com/canonical/go-kbkdf)
+
 # Description
 This package implements the key derivation functions defined in [NIST SP800-108](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf).
 
