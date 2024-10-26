@@ -25,7 +25,6 @@ const prologue = `
 package kbkdf_test
 
 import (
-	"crypto"
 	_ "crypto/sha1"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
@@ -33,6 +32,7 @@ import (
 	"testing"
 
 	. "github.com/canonical/go-kbkdf"
+	"github.com/canonical/go-kbkdf/hmac_prf"
 
 	. "gopkg.in/check.v1"
 )
@@ -74,11 +74,11 @@ var (
 	whitespaceToken = []byte{}
 
 	prfs = map[string]string{
-		"HMAC_SHA1":   "NewHMACPRF(crypto.SHA1)",
-		"HMAC_SHA224": "NewHMACPRF(crypto.SHA224)",
-		"HMAC_SHA256": "NewHMACPRF(crypto.SHA256)",
-		"HMAC_SHA384": "NewHMACPRF(crypto.SHA384)",
-		"HMAC_SHA512": "NewHMACPRF(crypto.SHA512)",
+		"HMAC_SHA1":   "hmac_prf.SHA1",
+		"HMAC_SHA224": "hmac_prf.SHA224",
+		"HMAC_SHA256": "hmac_prf.SHA256",
+		"HMAC_SHA384": "hmac_prf.SHA384",
+		"HMAC_SHA512": "hmac_prf.SHA512",
 	}
 )
 

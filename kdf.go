@@ -3,8 +3,7 @@
 // See LICENCE file for details.
 
 /*
-Package kbkdf implements the key derivation functions described in NIST SP-800-108
-(see https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-108.pdf).
+Package kbkdf implements the key derivation functions described in NIST SP-800-108.
 
 All 3 modes are implemented - counter, feedback and pipeline.
 
@@ -14,37 +13,8 @@ package kbkdf
 
 import (
 	"bytes"
-	"crypto"
-	"crypto/hmac"
 	"encoding/binary"
-	"hash"
 )
-
-// PRF represents a pseudorandom function, required by the key derivation functions.
-type PRF interface {
-	// Len returns the length of this PRF.
-	Len() uint32
-
-	// Run computes bytes for the supplied seed and input value.
-	Run(s, x []byte) []byte
-}
-
-type hmacPRF crypto.Hash
-
-func (p hmacPRF) Len() uint32 {
-	return uint32(crypto.Hash(p).Size())
-}
-
-func (p hmacPRF) Run(s, x []byte) []byte {
-	h := hmac.New(func() hash.Hash { return crypto.Hash(p).New() }, s)
-	h.Write(x)
-	return h.Sum(nil)
-}
-
-// NewHMACPRF creates a new HMAC based PRF using the supplied digest algorithm.
-func NewHMACPRF(h crypto.Hash) PRF {
-	return hmacPRF(h)
-}
 
 func fixedBytes(label, context []byte, bitLength uint32) []byte {
 	var res bytes.Buffer
@@ -56,7 +26,7 @@ func fixedBytes(label, context []byte, bitLength uint32) []byte {
 }
 
 func commonKDF(prfLen uint32, fixed []byte, bitLength uint32, fn func(uint32) []byte) []byte {
-	n := (bitLength + prfLen - 1) / prfLen
+	n := (bitLength + prfLen - 1) / prfLen // The number of iterations required
 
 	var res bytes.Buffer
 
