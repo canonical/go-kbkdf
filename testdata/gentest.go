@@ -70,6 +70,9 @@ func (s *kdfSuite) testPipelineMode(c *C, prf PRF, data *testData, useCounter bo
 }`
 
 var (
+	newlineToken    = []byte{'\n'}
+	whitespaceToken = []byte{}
+
 	prfs = map[string]string{
 		"HMAC_SHA1":   "NewHMACPRF(crypto.SHA1)",
 		"HMAC_SHA224": "NewHMACPRF(crypto.SHA224)",
@@ -79,47 +82,12 @@ var (
 	}
 )
 
-func scanTokens(data []byte, atEOF bool) (int, []byte, error) {
-	// Scan until the end of the line
-	lineAdv, tok, err := bufio.ScanLines(data, atEOF)
-	switch {
-	case err != nil:
-		return 0, nil, err
-	case lineAdv == 0:
-		// Request a new line
-		return 0, nil, nil
-	case len(tok) == 0:
-		// Return a newline as a token
-		return lineAdv, []byte{'\n'}, nil
-	}
+func isNewlineToken(tok string) bool {
+	return tok == string(newlineToken)
+}
 
-	// Skip space
-	adv := strings.IndexFunc(string(tok), func(r rune) bool {
-		return !unicode.IsSpace(r)
-	})
-	if adv < 0 {
-		// The rest of the line is all space - request a new one
-		return lineAdv, []byte{'\n'}, nil
-	}
-	tok = tok[adv:]
-
-	// The rest of the line is a comment - request a new one
-	if tok[0] == '#' {
-		return lineAdv, []byte{'\n'}, nil
-	}
-
-	// Find the next delimiter
-	i := strings.IndexAny(string(tok), "[]=")
-	switch {
-	case i == 0:
-		tok = []byte{tok[0]}
-	case i >= 0:
-		tok = tok[:i]
-	}
-
-	tok = []byte(strings.TrimSpace(string(tok)))
-
-	return adv + len(tok), tok, nil
+func isWhitespaceToken(tok string) bool {
+	return tok == string(whitespaceToken)
 }
 
 type testCase map[string]string
@@ -140,165 +108,254 @@ type parser struct {
 	currentSuite *testSuite
 	currentTest  testCase
 	currentName  string
+
+	expectingNewline bool
+	expectingValue   bool
 }
 
-func (p *parser) handleEndTestCaseParam(tok string) (stateFunc, error) {
-	switch {
-	case tok == "\n":
-		return p.handleStartTestCaseParam, nil
-	default:
-		return nil, fmt.Errorf("handleEndTestCaseParam: unexpected token %v", tok)
+func (p *parser) scanFn() func([]byte, bool) (int, []byte, error) {
+	return func(data []byte, atEOF bool) (int, []byte, error) {
+		// Scan until the end of the line
+		lineAdv, tok, err := bufio.ScanLines(data, atEOF)
+		switch {
+		case err != nil:
+			return 0, nil, err
+		case lineAdv == 0:
+			// The data doesn't contain a carriage return and there's
+			// more data to come, so request it.
+			return 0, nil, nil
+		case len(tok) == 0 && p.expectingNewline:
+			// We've got to the end of a line that we've just processed,
+			// so advance over the newline and return a newline token.
+			return lineAdv, newlineToken, nil
+		case len(tok) == 0 && p.expectingValue:
+			// We've encountered an empty value. Return a whitespace token
+			// and we'll advance past the newline on the next scan iteration.
+			return 0, whitespaceToken, nil
+		case len(tok) == 0:
+			// We've encountered an empty line, so advance past it,
+			// returning a whitespace token.
+			return lineAdv, whitespaceToken, nil
+		}
+
+		// Advance to the first non-space character.
+		adv := strings.IndexFunc(string(tok), func(r rune) bool {
+			return !unicode.IsSpace(r)
+		})
+		switch {
+		case adv < 0 && p.expectingValue:
+			// We've encountered a value that is all whitespace. Advance
+			// over everything except for the newline, which will
+			// happen on the next scan iteration.
+			return lineAdv - 1, whitespaceToken, nil
+		case adv < 0:
+			// The rest of the line is all space. Advance over
+			// it and return a whitespace token.
+			return lineAdv, whitespaceToken, nil
+		}
+		tok = tok[adv:]
+
+		// The entire the line is a comment - request a new one.
+		if tok[0] == '#' {
+			return lineAdv, nil, nil
+		}
+
+		// Find the next delimiter.
+		i := strings.IndexAny(string(tok), "[]=")
+		switch {
+		case i == 0:
+			// We have a delimiter token
+			tok = []byte{tok[0]}
+		case i >= 0:
+			// We have a string token
+			tok = tok[:i]
+		}
+
+		// Advance over the entire token, including any whitespace (which
+		// we'll strip from the return).
+		adv += len(tok)
+
+		// There shouldn't be any leading space because of the earlier
+		// advance, but trim any trailing space from the returned token.
+		tok = []byte(strings.TrimSpace(string(tok)))
+
+		return adv, tok, nil
 	}
 }
 
-func (p *parser) handleTestCaseParam(tok string) (stateFunc, error) {
-	p.currentTest[p.currentName] = tok
-	return p.handleEndTestCaseParam, nil
-}
-
-func (p *parser) handleEndTestSuiteParam2(tok string) (stateFunc, error) {
+func (p *parser) startTestSuite(tok string) (stateFunc, error) {
 	switch {
-	case tok == "\n":
-		return p.handleStartTestSuiteParam, nil
-	default:
-		return nil, fmt.Errorf("handleEndTestSuiteParam2: unexpected token %v", tok)
-	}
-}
-
-func (p *parser) handleEndTestSuiteParam(tok string) (stateFunc, error) {
-	switch {
-	case tok == "]":
-		return p.handleEndTestSuiteParam2, nil
-	default:
-		return nil, fmt.Errorf("handleEndTestSuiteParam: unexpected token %v", tok)
-	}
-}
-
-func (p *parser) handleEndTestSuiteName(tok string) (stateFunc, error) {
-	switch {
-	case tok == "]":
-		p.currentSuite.name = p.currentName
-		return p.handleEndTestSuiteParam(tok)
-	case tok == "=":
-		return p.handleEqual(tok)
-	default:
-		return nil, fmt.Errorf("handleEndTestSuiteName: unexpected token %v", tok)
-	}
-}
-
-func (p *parser) handleTestSuiteParam(tok string) (stateFunc, error) {
-	if p.currentSuite.name == "" {
-		p.currentSuite.name = tok
-	}
-	p.currentSuite.params[p.currentName] = tok
-	return p.handleEndTestSuiteParam, nil
-}
-
-func (p *parser) handleParamValue(tok string) (stateFunc, error) {
-	switch {
-	case tok == "[" || tok == "]" || tok == "=":
-		return nil, fmt.Errorf("handleParamValue: unexpected token %v", tok)
-	case tok == "\n" && p.currentTest != nil:
-		return p.handleStartTestCaseParam, nil
-	case tok == "\n":
-		return nil, fmt.Errorf("handleParamValue: unexpected token %v", tok)
-	case p.currentTest != nil:
-		return p.handleTestCaseParam(tok)
-	default:
-		return p.handleTestSuiteParam(tok)
-	}
-}
-
-func (p *parser) handleEqual(tok string) (stateFunc, error) {
-	switch {
-	case tok == "=":
-		return p.handleParamValue, nil
-	default:
-		return nil, fmt.Errorf("handleEqual: unexpected token %v", tok)
-	}
-}
-
-func (p *parser) handleParamName(tok string) (stateFunc, error) {
-	switch {
-	case tok == "\n" || tok == "[" || tok == "]" || tok == "=":
-		return nil, fmt.Errorf("handleParamName: unexpected token %v", tok)
-	default:
-		p.currentName = string(tok)
-		return p.handleEqual, nil
-	}
-}
-
-func (p *parser) handleStartTestCaseParam(tok string) (stateFunc, error) {
-	switch {
-	case tok == "\n":
-		p.currentSuite.tests = append(p.currentSuite.tests, p.currentTest)
-		p.currentTest = nil
-		return p.start, nil
-	case tok == "[" || tok == "]" || tok == "=":
-		return nil, fmt.Errorf("handleStartTestCaseParam: unexpected token %v", tok)
-	default:
-		return p.handleParamName(tok)
-	}
-}
-
-func (p *parser) handleStartTestSuiteParam2(tok string) (stateFunc, error) {
-	switch {
-	case tok == "[" || tok == "]" || tok == "=" || tok == "\n":
-		return nil, fmt.Errorf("handleStartTestSuiteParam2: unexpected token %v", tok)
-	default:
-		return p.handleParamName(tok)
-	}
-}
-
-func (p *parser) handleStartTestSuiteParam(tok string) (stateFunc, error) {
-	switch {
-	case tok == "\n":
-		return p.start, nil
+	case isWhitespaceToken(tok):
+		// Nothing to process on this iteration
+		return p.startTestSuite, nil
 	case tok == "[":
-		return p.handleStartTestSuiteParam2, nil
-	case tok == "]" || tok == "=":
-		return nil, fmt.Errorf("handleStartTestSuiteParam: unexpected token %v", tok)
+		// Open a new suite.
+		p.currentSuite = &testSuite{params: make(map[string]string)}
+		p.suites = append(p.suites, p.currentSuite)
+		return p.handleTestSuiteName, nil
 	default:
-		p.currentTest = make(testCase)
-		return p.handleStartTestCaseParam(tok)
+		return nil, fmt.Errorf("startTestSuite: unexpected token %q", tok)
 	}
 }
 
-func (p *parser) handleStartTestSuiteName2(tok string) (stateFunc, error) {
+func (p *parser) handleTestSuiteName(tok string) (stateFunc, error) {
 	switch {
-	case tok == "[" || tok == "]" || tok == "=" || tok == "\n":
-		return nil, fmt.Errorf("handleStartTestSuiteName2: unexpected token %v", tok)
+	case tok == "[" || tok == "]" || tok == "=":
+		return nil, fmt.Errorf("handleTestSuiteName: unexpected token %q", tok)
 	default:
 		p.currentName = tok
 		return p.handleEndTestSuiteName, nil
 	}
 }
 
-func (p *parser) handleStartTestSuiteName(tok string) (stateFunc, error) {
+func (p *parser) handleEndTestSuiteName(tok string) (stateFunc, error) {
 	switch {
-	case tok == "[":
-		return p.handleStartTestSuiteName2, nil
+	case p.currentSuite == nil:
+		panic("no current suite")
+	case tok == "]":
+		// This test suite has an explicit name.
+		p.currentSuite.name = p.currentName
+		return p.newSwallowNewline(p.handleTestSuiteParam), nil
+	case tok == "=":
+		// This test suite doesn't have an explicit name - we're dealing with
+		// a test suite parameter.
+		return p.newHandleEqual(p.commitTestSuiteParam)(tok)
 	default:
-		return nil, fmt.Errorf("handleStartTestSuiteName: unexpected token %v", tok)
+		return nil, fmt.Errorf("handleEndTestSuiteName: unexpected token %q", tok)
 	}
 }
 
-func (p *parser) start(tok string) (stateFunc, error) {
+func (p *parser) handleTestSuiteParam(tok string) (stateFunc, error) {
 	switch {
-	case tok == "\n":
-		return nil, nil
+	case isWhitespaceToken(tok):
+		// We've finished parsing the test suite parameters.
+		return p.startTestCase, nil
 	case tok == "[":
-		p.currentSuite = &testSuite{params: make(map[string]string)}
-		p.suites = append(p.suites, p.currentSuite)
-		return p.handleStartTestSuiteName(tok)
+		// We've got another test suite parameter.
+		return p.newHandleParam(p.commitTestSuiteParam), nil
 	case tok == "]" || tok == "=":
-		return nil, fmt.Errorf("start: unexpected token %v", tok)
+		return nil, fmt.Errorf("handleTestSuiteParam: unexpected token %q", tok)
+	default:
+		// We're starting a test case.
+		return p.startTestCase(tok)
+	}
+}
+
+func (p *parser) commitTestSuiteParam(value string) (stateFunc, error) {
+	if p.currentSuite == nil {
+		panic("no current suite")
+	}
+	if p.currentSuite.name == "" {
+		// If the test suite doesn't have an explicit name, use the
+		// value of the first parameter.
+		p.currentSuite.name = value
+	}
+	p.currentSuite.params[p.currentName] = value
+	return p.handleEndTestSuiteParam, nil
+}
+
+func (p *parser) handleEndTestSuiteParam(tok string) (stateFunc, error) {
+	switch {
+	case tok == "]":
+		return p.newSwallowNewline(p.handleTestSuiteParam), nil
+	default:
+		return nil, fmt.Errorf("handleEndTestSuiteParam: unexpected token %q", tok)
+	}
+}
+
+func (p *parser) startTestCase(tok string) (stateFunc, error) {
+	switch {
+	case isWhitespaceToken(tok):
+		// Nothing to process on this iteration
+		return p.startTestCase, nil
+	case tok == "[":
+		p.currentSuite = nil
+		return p.startTestSuite(tok)
 	default:
 		if p.currentSuite == nil {
-			return nil, fmt.Errorf("start: unexpected token %v (no current suite)", tok)
+			panic("no current suite")
 		}
 		p.currentTest = make(testCase)
-		return p.handleStartTestCaseParam(tok)
+		return p.handleTestCaseParam(tok)
+	}
+}
+
+func (p *parser) handleTestCaseParam(tok string) (stateFunc, error) {
+	if p.currentSuite == nil {
+		panic("no current suite")
+	}
+	if p.currentTest == nil {
+		panic("no current test")
+	}
+	switch {
+	case isWhitespaceToken(tok):
+		// This is the end of the test case.
+		p.currentSuite.tests = append(p.currentSuite.tests, p.currentTest)
+		p.currentTest = nil
+		return p.startTestCase, nil
+	default:
+		return p.newHandleParam(p.commitTestCaseParam)(tok)
+	}
+}
+
+func (p *parser) commitTestCaseParam(value string) (stateFunc, error) {
+	if p.currentTest == nil {
+		panic("no current test")
+	}
+	p.currentTest[p.currentName] = value
+	return p.newSwallowNewline(p.handleTestCaseParam), nil
+}
+
+func (p *parser) newHandleParam(commit stateFunc) stateFunc {
+	return func(tok string) (stateFunc, error) {
+		switch {
+		case tok == "[" || tok == "]" || tok == "=":
+			return nil, fmt.Errorf("handleParam: unexpected token in name: %q", tok)
+		default:
+			p.currentName = tok
+			return p.newHandleEqual(commit), nil
+		}
+	}
+}
+
+func (p *parser) newHandleEqual(commit stateFunc) stateFunc {
+	return func(tok string) (stateFunc, error) {
+		switch {
+		case tok == "=":
+			return p.newHandleParamValue(commit), nil
+		default:
+			return nil, fmt.Errorf("handleEqual: unexpected token %q", tok)
+		}
+	}
+}
+
+func (p *parser) newHandleParamValue(commit stateFunc) stateFunc {
+	p.expectingValue = true
+	return func(tok string) (stateFunc, error) {
+		defer func() {
+			p.expectingValue = false
+		}()
+		switch {
+		case tok == "[" || tok == "]" || tok == "=":
+			return nil, fmt.Errorf("handleParamValue: unexpected token: %q", tok)
+		default:
+			return commit(tok)
+		}
+	}
+}
+
+func (p *parser) newSwallowNewline(next stateFunc) stateFunc {
+	p.expectingNewline = true
+	return func(tok string) (stateFunc, error) {
+		defer func() {
+			p.expectingNewline = false
+		}()
+		switch {
+		case isNewlineToken(tok):
+			return next, nil
+		default:
+			return nil, fmt.Errorf("handleNewline: unexpected token: %q", tok)
+		}
 	}
 }
 
@@ -308,18 +365,16 @@ func (p *parser) run() error {
 		if err != nil {
 			return err
 		}
-		if next != nil {
-			p.current = next
-		}
+		p.current = next
 	}
-	return nil
+	return p.scanner.Err()
 }
 
 func newParser(r io.Reader) *parser {
 	scanner := bufio.NewScanner(r)
-	scanner.Split(scanTokens)
 	p := &parser{scanner: scanner}
-	p.current = p.start
+	scanner.Split(p.scanFn())
+	p.current = p.startTestSuite
 	return p
 }
 
