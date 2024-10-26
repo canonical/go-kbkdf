@@ -445,7 +445,7 @@ func newAtomicFile(path string) (*atomicFile, error) {
 }
 
 func run(out io.Writer) error {
-	if err := generateTests("testdata/KDFCTR_gen.rsp", map[string]string{"CTRLOCATION": "BEFORE_FIXED", "RLEN": "32_BITS"},
+	if err := generateTests("testdata/CounterMode/KDFCTR_gen.rsp", map[string]string{"CTRLOCATION": "BEFORE_FIXED", "RLEN": "32_BITS"},
 		func(suite *testSuite, _ int) error {
 			newPrf, ok := prfs[suite.params["PRF"]]
 			if !ok {
