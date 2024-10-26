@@ -53,13 +53,22 @@ func CounterModeKey(prf PRF, key, label, context []byte, bitLength uint32) []byt
 	return counterModeKeyInternal(prf, key, fixedBytes(label, context, bitLength), bitLength)
 }
 
-func feedbackModeKeyInternal(prf PRF, key, fixed, iv []byte, bitLength uint32, useCounter bool) []byte {
+// IterationCounterMode defines whether the iteration counter is included
+// in the feedback and double-pipeline KDFs
+type IterationCounterMode bool
+
+const (
+	OmitIterationCounter    IterationCounterMode = false
+	IncludeIterationCounter IterationCounterMode = true
+)
+
+func feedbackModeKeyInternal(prf PRF, key, fixed, iv []byte, bitLength uint32, iterationCounterMode IterationCounterMode) []byte {
 	k := iv
 
 	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
 		var x bytes.Buffer
 		x.Write(k)
-		if useCounter {
+		if iterationCounterMode == IncludeIterationCounter {
 			binary.Write(&x, binary.BigEndian, i)
 		}
 		x.Write(fixed)
@@ -73,13 +82,13 @@ func feedbackModeKeyInternal(prf PRF, key, fixed, iv []byte, bitLength uint32, u
 // function described in NIST SP-800-108, using the supplied PRF, secret key and
 // other input parameters.
 //
-// The useCounter argument specifies whether the iteration counter should be
+// The iterationCounterMode argument specifies whether the iteration counter should be
 // included as an input to the PRF.
-func FeedbackModeKey(prf PRF, key, label, context, iv []byte, bitLength uint32, useCounter bool) []byte {
-	return feedbackModeKeyInternal(prf, key, fixedBytes(label, context, bitLength), iv, bitLength, useCounter)
+func FeedbackModeKey(prf PRF, key, label, context, iv []byte, bitLength uint32, iterationCounterMode IterationCounterMode) []byte {
+	return feedbackModeKeyInternal(prf, key, fixedBytes(label, context, bitLength), iv, bitLength, iterationCounterMode)
 }
 
-func pipelineModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32, useCounter bool) []byte {
+func pipelineModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32, iterationCounterMode IterationCounterMode) []byte {
 	a := fixed
 
 	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
@@ -87,7 +96,7 @@ func pipelineModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32, useCo
 
 		var x bytes.Buffer
 		x.Write(a)
-		if useCounter {
+		if iterationCounterMode == IncludeIterationCounter {
 			binary.Write(&x, binary.BigEndian, i)
 		}
 		x.Write(fixed)
@@ -100,8 +109,8 @@ func pipelineModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32, useCo
 // iteration mode function described in NIST SP-800-108, using the supplied PRF,
 // secret key and other input parameters.
 //
-// The useCounter argument specifies whether the iteration counter should be
+// The iterationCounterMode argument specifies whether the iteration counter should be
 // included as an input to the PRF.
-func PipelineModeKey(prf PRF, key, label, context []byte, bitLength uint32, useCounter bool) []byte {
-	return pipelineModeKeyInternal(prf, key, fixedBytes(label, context, bitLength), bitLength, useCounter)
+func PipelineModeKey(prf PRF, key, label, context []byte, bitLength uint32, iterationCounterMode IterationCounterMode) []byte {
+	return pipelineModeKeyInternal(prf, key, fixedBytes(label, context, bitLength), bitLength, iterationCounterMode)
 }

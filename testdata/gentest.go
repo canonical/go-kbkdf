@@ -61,12 +61,12 @@ func (s *kdfSuite) testCounterMode(c *C, prf PRF, data *testData) {
 	c.Check(CounterModeKeyInternal(prf, data.key, data.fixed, data.bitLength), DeepEquals, data.expected)
 }
 
-func (s *kdfSuite) testFeedbackMode(c *C, prf PRF, data *testData, useCounter bool) {
-	c.Check(FeedbackModeKeyInternal(prf, data.key, data.fixed, data.iv, data.bitLength, useCounter), DeepEquals, data.expected)
+func (s *kdfSuite) testFeedbackMode(c *C, prf PRF, data *testData, iterationCounterMode IterationCounterMode) {
+	c.Check(FeedbackModeKeyInternal(prf, data.key, data.fixed, data.iv, data.bitLength, iterationCounterMode), DeepEquals, data.expected)
 }
 
-func (s *kdfSuite) testPipelineMode(c *C, prf PRF, data *testData, useCounter bool) {
-	c.Check(PipelineModeKeyInternal(prf, data.key, data.fixed, data.bitLength, useCounter), DeepEquals, data.expected)
+func (s *kdfSuite) testPipelineMode(c *C, prf PRF, data *testData, iterationCounterMode IterationCounterMode) {
+	c.Check(PipelineModeKeyInternal(prf, data.key, data.fixed, data.bitLength, iterationCounterMode), DeepEquals, data.expected)
 }`
 
 var (
@@ -488,7 +488,7 @@ func (s *kdfSuite) TestCounterMode%[1]s_%[2]d(c *C) {
 			_, err := fmt.Fprintf(out, `
 
 func (s *kdfSuite) testFeedbackModeNoCounter%[1]s(c *C, data *testData) {
-	s.testFeedbackMode(c, %[2]s, data, false)
+	s.testFeedbackMode(c, %[2]s, data, OmitIterationCounter)
 }`,
 				suite.params["PRF"], newPrf)
 			return err
@@ -522,7 +522,7 @@ func (s *kdfSuite) TestFeedbackModeNoCounter%[1]s_%[2]d(c *C) {
 			_, err := fmt.Fprintf(out, `
 
 func (s *kdfSuite) testFeedbackModeNoZeroIV%[1]s(c *C, data *testData) {
-	s.testFeedbackMode(c, %[2]s, data, true)
+	s.testFeedbackMode(c, %[2]s, data, IncludeIterationCounter)
 }`,
 				suite.params["PRF"], newPrf)
 			return err
@@ -556,7 +556,7 @@ func (s *kdfSuite) TestFeedbackModeNoZeroIV%[1]s_%[2]d(c *C) {
 			_, err := fmt.Fprintf(out, `
 
 func (s *kdfSuite) testFeedbackModeZeroIV%[1]s(c *C, data *testData) {
-	s.testFeedbackMode(c, %[2]s, data, true)
+	s.testFeedbackMode(c, %[2]s, data, IncludeIterationCounter)
 }`,
 				suite.params["PRF"], newPrf)
 			return err
@@ -590,7 +590,7 @@ func (s *kdfSuite) TestFeedbackModeZeroIV%[1]s_%[2]d(c *C) {
 			_, err := fmt.Fprintf(out, `
 
 func (s *kdfSuite) testPipelineMode%[1]s(c *C, data *testData) {
-	s.testPipelineMode(c, %[2]s, data, true)
+	s.testPipelineMode(c, %[2]s, data, IncludeIterationCounter)
 }`,
 				suite.params["PRF"], newPrf)
 			return err
@@ -623,7 +623,7 @@ func (s *kdfSuite) TestPipelineMode%[1]s_%[2]d(c *C) {
 			_, err := fmt.Fprintf(out, `
 
 func (s *kdfSuite) testPipelineModeNoCounter%[1]s(c *C, data *testData) {
-	s.testPipelineMode(c, %[2]s, data, false)
+	s.testPipelineMode(c, %[2]s, data, OmitIterationCounter)
 }`,
 				suite.params["PRF"], newPrf)
 			return err

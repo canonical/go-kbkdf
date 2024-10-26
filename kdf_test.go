@@ -44,12 +44,12 @@ func (s *kdfSuite) testCounterMode(c *C, prf PRF, data *testData) {
 	c.Check(CounterModeKeyInternal(prf, data.key, data.fixed, data.bitLength), DeepEquals, data.expected)
 }
 
-func (s *kdfSuite) testFeedbackMode(c *C, prf PRF, data *testData, useCounter bool) {
-	c.Check(FeedbackModeKeyInternal(prf, data.key, data.fixed, data.iv, data.bitLength, useCounter), DeepEquals, data.expected)
+func (s *kdfSuite) testFeedbackMode(c *C, prf PRF, data *testData, iterationCounterMode IterationCounterMode) {
+	c.Check(FeedbackModeKeyInternal(prf, data.key, data.fixed, data.iv, data.bitLength, iterationCounterMode), DeepEquals, data.expected)
 }
 
-func (s *kdfSuite) testPipelineMode(c *C, prf PRF, data *testData, useCounter bool) {
-	c.Check(PipelineModeKeyInternal(prf, data.key, data.fixed, data.bitLength, useCounter), DeepEquals, data.expected)
+func (s *kdfSuite) testPipelineMode(c *C, prf PRF, data *testData, iterationCounterMode IterationCounterMode) {
+	c.Check(PipelineModeKeyInternal(prf, data.key, data.fixed, data.bitLength, iterationCounterMode), DeepEquals, data.expected)
 }
 
 func (s *kdfSuite) testCounterModeHMAC_SHA1(c *C, data *testData) {
@@ -1873,7 +1873,7 @@ func (s *kdfSuite) TestCounterModeHMAC_SHA512_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoCounterHMAC_SHA1(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA1, data, false)
+	s.testFeedbackMode(c, hmac_prf.SHA1, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA1_0(c *C) {
@@ -2277,7 +2277,7 @@ func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA1_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoCounterHMAC_SHA224(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA224, data, false)
+	s.testFeedbackMode(c, hmac_prf.SHA224, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA224_0(c *C) {
@@ -2681,7 +2681,7 @@ func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA224_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoCounterHMAC_SHA256(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA256, data, false)
+	s.testFeedbackMode(c, hmac_prf.SHA256, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA256_0(c *C) {
@@ -3085,7 +3085,7 @@ func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA256_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoCounterHMAC_SHA384(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA384, data, false)
+	s.testFeedbackMode(c, hmac_prf.SHA384, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA384_0(c *C) {
@@ -3489,7 +3489,7 @@ func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA384_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoCounterHMAC_SHA512(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA512, data, false)
+	s.testFeedbackMode(c, hmac_prf.SHA512, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA512_0(c *C) {
@@ -3893,7 +3893,7 @@ func (s *kdfSuite) TestFeedbackModeNoCounterHMAC_SHA512_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoZeroIVHMAC_SHA1(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA1, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA1, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA1_0(c *C) {
@@ -4297,7 +4297,7 @@ func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA1_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoZeroIVHMAC_SHA224(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA224, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA224, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA224_0(c *C) {
@@ -4701,7 +4701,7 @@ func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA224_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoZeroIVHMAC_SHA256(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA256, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA256, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA256_0(c *C) {
@@ -5105,7 +5105,7 @@ func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA256_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoZeroIVHMAC_SHA384(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA384, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA384, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA384_0(c *C) {
@@ -5509,7 +5509,7 @@ func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA384_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeNoZeroIVHMAC_SHA512(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA512, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA512, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA512_0(c *C) {
@@ -5913,7 +5913,7 @@ func (s *kdfSuite) TestFeedbackModeNoZeroIVHMAC_SHA512_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeZeroIVHMAC_SHA1(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA1, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA1, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA1_0(c *C) {
@@ -6317,7 +6317,7 @@ func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA1_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeZeroIVHMAC_SHA224(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA224, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA224, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA224_0(c *C) {
@@ -6721,7 +6721,7 @@ func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA224_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeZeroIVHMAC_SHA256(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA256, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA256, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA256_0(c *C) {
@@ -7125,7 +7125,7 @@ func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA256_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeZeroIVHMAC_SHA384(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA384, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA384, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA384_0(c *C) {
@@ -7529,7 +7529,7 @@ func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA384_39(c *C) {
 }
 
 func (s *kdfSuite) testFeedbackModeZeroIVHMAC_SHA512(c *C, data *testData) {
-	s.testFeedbackMode(c, hmac_prf.SHA512, data, true)
+	s.testFeedbackMode(c, hmac_prf.SHA512, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA512_0(c *C) {
@@ -7933,7 +7933,7 @@ func (s *kdfSuite) TestFeedbackModeZeroIVHMAC_SHA512_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeHMAC_SHA1(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA1, data, true)
+	s.testPipelineMode(c, hmac_prf.SHA1, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeHMAC_SHA1_0(c *C) {
@@ -8297,7 +8297,7 @@ func (s *kdfSuite) TestPipelineModeHMAC_SHA1_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeHMAC_SHA224(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA224, data, true)
+	s.testPipelineMode(c, hmac_prf.SHA224, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeHMAC_SHA224_0(c *C) {
@@ -8661,7 +8661,7 @@ func (s *kdfSuite) TestPipelineModeHMAC_SHA224_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeHMAC_SHA256(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA256, data, true)
+	s.testPipelineMode(c, hmac_prf.SHA256, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeHMAC_SHA256_0(c *C) {
@@ -9025,7 +9025,7 @@ func (s *kdfSuite) TestPipelineModeHMAC_SHA256_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeHMAC_SHA384(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA384, data, true)
+	s.testPipelineMode(c, hmac_prf.SHA384, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeHMAC_SHA384_0(c *C) {
@@ -9389,7 +9389,7 @@ func (s *kdfSuite) TestPipelineModeHMAC_SHA384_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeHMAC_SHA512(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA512, data, true)
+	s.testPipelineMode(c, hmac_prf.SHA512, data, IncludeIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeHMAC_SHA512_0(c *C) {
@@ -9753,7 +9753,7 @@ func (s *kdfSuite) TestPipelineModeHMAC_SHA512_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeNoCounterHMAC_SHA1(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA1, data, false)
+	s.testPipelineMode(c, hmac_prf.SHA1, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA1_0(c *C) {
@@ -10117,7 +10117,7 @@ func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA1_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeNoCounterHMAC_SHA224(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA224, data, false)
+	s.testPipelineMode(c, hmac_prf.SHA224, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA224_0(c *C) {
@@ -10481,7 +10481,7 @@ func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA224_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeNoCounterHMAC_SHA256(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA256, data, false)
+	s.testPipelineMode(c, hmac_prf.SHA256, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA256_0(c *C) {
@@ -10845,7 +10845,7 @@ func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA256_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeNoCounterHMAC_SHA384(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA384, data, false)
+	s.testPipelineMode(c, hmac_prf.SHA384, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA384_0(c *C) {
@@ -11209,7 +11209,7 @@ func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA384_39(c *C) {
 }
 
 func (s *kdfSuite) testPipelineModeNoCounterHMAC_SHA512(c *C, data *testData) {
-	s.testPipelineMode(c, hmac_prf.SHA512, data, false)
+	s.testPipelineMode(c, hmac_prf.SHA512, data, OmitIterationCounter)
 }
 
 func (s *kdfSuite) TestPipelineModeNoCounterHMAC_SHA512_0(c *C) {
