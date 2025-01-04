@@ -14,6 +14,8 @@ package hmac_prf
 import (
 	"crypto"
 	"crypto/hmac"
+
+	"github.com/canonical/go-kbkdf"
 )
 
 type prf crypto.Hash
@@ -26,6 +28,11 @@ func (p prf) Run(s, x []byte) []byte {
 	h := hmac.New(crypto.Hash(p).New, s)
 	h.Write(x)
 	return h.Sum(nil)
+}
+
+// From creates a PRF from the supplied digest algorithm.
+func From(alg crypto.Hash) kbkdf.PRF {
+	return prf(alg)
 }
 
 var (
