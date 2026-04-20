@@ -26,7 +26,7 @@ func fixedBytes(label, context []byte, bitLength uint32) []byte {
 }
 
 func commonKDF(prfLen uint32, bitLength uint32, fn func(uint32) []byte) []byte {
-	n := (bitLength + prfLen - 1) / prfLen // The number of iterations required
+	n := (bitLength + prfLen*8 - 1) / (prfLen * 8) // The number of iterations required
 
 	var res bytes.Buffer
 
