@@ -26,7 +26,7 @@ func fixedBytes(label, context []byte, bitLength uint32) []byte {
 }
 
 func commonKDF(prfLen uint32, bitLength uint32, fn func(uint32) []byte) []byte {
-	n := (bitLength + prfLen*8 - 1) / (prfLen * 8) // The number of iterations required
+	n := (bitLength + prfLen - 1) / prfLen // The number of iterations required
 
 	var res bytes.Buffer
 
@@ -38,7 +38,7 @@ func commonKDF(prfLen uint32, bitLength uint32, fn func(uint32) []byte) []byte {
 }
 
 func counterModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32) []byte {
-	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
+	return commonKDF(prf.Size()*8, bitLength, func(i uint32) []byte {
 		var x bytes.Buffer
 		binary.Write(&x, binary.BigEndian, i)
 		x.Write(fixed)
@@ -65,7 +65,7 @@ const (
 func feedbackModeKeyInternal(prf PRF, key, fixed, iv []byte, bitLength uint32, iterationCounterMode IterationCounterMode) []byte {
 	k := iv
 
-	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
+	return commonKDF(prf.Size()*8, bitLength, func(i uint32) []byte {
 		var x bytes.Buffer
 		x.Write(k)
 		if iterationCounterMode == IncludeIterationCounter {
@@ -91,7 +91,7 @@ func FeedbackModeKey(prf PRF, key, label, context, iv []byte, bitLength uint32, 
 func pipelineModeKeyInternal(prf PRF, key, fixed []byte, bitLength uint32, iterationCounterMode IterationCounterMode) []byte {
 	a := fixed
 
-	return commonKDF(prf.Size(), bitLength, func(i uint32) []byte {
+	return commonKDF(prf.Size()*8, bitLength, func(i uint32) []byte {
 		a = prf.Run(key, a)
 
 		var x bytes.Buffer
